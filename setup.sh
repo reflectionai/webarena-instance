@@ -11,7 +11,7 @@ docker compose start
 
 # Wait for services to start
 # Dockerize and run the Flask application
-cd ~/webarena/environment_docker/webarena-homepage
+cd /home/ubuntu/webarena/environment_docker/webarena-homepage
 curl -o Dockerfile https://raw.githubusercontent.com/reflectionai/webarena-instance/main/Dockerfile
 docker build -t webarena-homepage .
 # docker run -d -p 4399:4399 webarena-homepage
