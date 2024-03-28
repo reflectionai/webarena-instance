@@ -20,7 +20,7 @@
         buildInputs = with pkgs; [
           alejandra
           jq
-          postgresql
+	  awscli2
         ];
         PYTHONBREAKPOINT = "ipdb.set_trace";
         shellHook = ''
