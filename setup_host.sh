@@ -11,3 +11,8 @@ docker exec shopping_admin /var/www/magento2/bin/magento cache:flush
 
 docker exec gitlab sed -i "s|^external_url.*|external_url 'http://<your-server-hostname>:8023'|" /etc/gitlab/gitlab.rb
 docker exec gitlab gitlab-ctl reconfigure
+
+cd ~/webarena/environment_docker/webarena-homepage
+curl -o Dockerfile https://raw.githubusercontent.com/reflectionai/webarena-instance/main/Dockerfile
+docker build -t webarena-homepage .
+docker run -d -p 4399:4399 webarena-homepage
