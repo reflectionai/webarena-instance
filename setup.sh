@@ -14,16 +14,16 @@ docker compose start
 cd /home/ubuntu/webarena/environment_docker/webarena-homepage
 curl -o Dockerfile https://raw.githubusercontent.com/reflectionai/webarena-instance/main/Dockerfile
 docker build -t webarena-homepage .
-# docker run -d -p 4399:4399 webarena-homepage
-# echo "Webarena homepage is running on port 4399"
+docker run -d -p 4399:4399 webarena-homepage
+echo "Webarena homepage is running on port 4399"
 
 # sleep 60
 
-# # Fetch the instance's public hostname
-# HOSTNAME=$(curl http://169.254.169.254/latest/meta-data/public-hostname)
+# Fetch the instance's public hostname
+HOSTNAME=$(curl http://169.254.169.254/latest/meta-data/public-hostname)
 
-# # Magento setup with dynamic hostname
-# docker exec shopping /var/www/magento2/bin/magento setup:store-config:set --base-url="http://${HOSTNAME}:7770" # no trailing /
+# Magento setup with dynamic hostname
+docker exec shopping /var/www/magento2/bin/magento setup:store-config:set --base-url="http://${HOSTNAME}:7770" # no trailing /
 # docker exec shopping mysql -u magentouser -pMyPassword magentodb -e "UPDATE core_config_data SET value='http://${HOSTNAME}:7770/' WHERE path = 'web/secure/base_url';"
 
 # # Remove the requirement to reset password
