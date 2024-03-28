@@ -10,6 +10,13 @@ cd /home/ubuntu/openstreetmap-website/
 docker compose start
 
 # Wait for services to start
+# Dockerize and run the Flask application
+cd ~/webarena/environment_docker/webarena-homepage
+curl -o Dockerfile https://raw.githubusercontent.com/reflectionai/webarena-instance/main/Dockerfile
+docker build -t webarena-homepage .
+docker run -d -p 4399:4399 webarena-homepage
+echo "Webarena homepage is running on port 4399"
+
 sleep 60
 
 # Fetch the instance's public hostname
@@ -32,9 +39,3 @@ docker exec shopping_admin /var/www/magento2/bin/magento cache:flush
 # GitLab configuration update with dynamic hostname
 docker exec gitlab sed -i "s|^external_url.*|external_url 'http://${HOSTNAME}:8023'|" /etc/gitlab/gitlab.rb
 docker exec gitlab gitlab-ctl reconfigure
-
-# Dockerize and run the Flask application
-cd ~/webarena/environment_docker/webarena-homepage
-curl -o Dockerfile https://raw.githubusercontent.com/reflectionai/webarena-instance/main/Dockerfile
-docker build -t webarena-homepage .
-docker run -d -p 4399:4399 webarena-homepage
