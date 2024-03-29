@@ -40,9 +40,27 @@ docker exec shopping_admin /var/www/magento2/bin/magento setup:store-config:set 
 docker exec shopping_admin mysql -u magentouser -pMyPassword magentodb -e "UPDATE core_config_data SET value='http://${HOSTNAME}:7780/' WHERE path = 'web/secure/base_url';"
 docker exec shopping_admin /var/www/magento2/bin/magento cache:flush
 
+CONTAINER_NAME="gitlab"
+
+# Loop until the container's health status is "healthy"
+while true; do
+    # Get the current health status of the container
+    HEALTH_STATUS=$(docker inspect --format='{{.State.Health.Status}}' "$CONTAINER_NAME")
+    echo "$CONTAINER_NAME is $HEALTH_STATUS."
+
+    # Check if the health status is "healthy"
+    if [ "$HEALTH_STATUS" == "healthy" ]; then
+        break
+    fi
+
+    # Wait for a short period before checking again
+    echo "Waiting for $CONTAINER_NAME to become healthy..."
+    sleep 10
+done
+
 # GitLab configuration update with dynamic hostname
-# docker exec gitlab sed -i "s|^external_url.*|external_url 'http://${HOSTNAME}:8023'|" /etc/gitlab/gitlab.rb
-# docker exec gitlab gitlab-ctl reconfigure
+docker exec gitlab sed -i "s|^external_url.*|external_url 'http://${HOSTNAME}:8023'|" /etc/gitlab/gitlab.rb
+docker exec gitlab gitlab-ctl reconfigure
 
 touch /home/ubuntu/setup_complete.txt
 echo "Setup complete."
