@@ -9,6 +9,9 @@ docker start kiwix33
 cd /home/ubuntu/openstreetmap-website/
 docker compose start
 
+# Fetch the instance's public hostname
+HOSTNAME=$(curl http://169.254.169.254/latest/meta-data/public-hostname)
+
 # Wait for services to start
 # Dockerize and run the Flask application
 cd /home/ubuntu/webarena/environment_docker/webarena-homepage
@@ -21,8 +24,6 @@ echo "Webarena homepage is running on port 4399"
 
 sleep 60
 
-# Fetch the instance's public hostname
-HOSTNAME=$(curl http://169.254.169.254/latest/meta-data/public-hostname)
 
 # Magento setup with dynamic hostname
 docker exec shopping /var/www/magento2/bin/magento setup:store-config:set --base-url="http://${HOSTNAME}:7770" # no trailing /
