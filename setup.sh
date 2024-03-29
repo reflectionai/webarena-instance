@@ -29,9 +29,9 @@ echo "Webarena homepage is running on port 4399"
 mkdir /home/ubuntu/app
 cd /home/ubuntu/app
 curl -o Dockerfile https://raw.githubusercontent.com/reflectionai/webarena-instance/main/app/Dockerfile
-curl -o app https://raw.githubusercontent.com/reflectionai/webarena-instance/main/app/app.py
+curl -o app.py https://raw.githubusercontent.com/reflectionai/webarena-instance/main/app/app.py
 docker build -t reset-server .
-docker run -d -p 5000:5000 reset-server
+docker run -d -p 5000:5000 -v /var/run/docker.sock:/var/run/docker.sock reset-server
 
 sleep 60
 
