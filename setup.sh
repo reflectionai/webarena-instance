@@ -19,7 +19,7 @@ docker build -t webarena-homepage .
 docker run -d -p 4399:4399 webarena-homepage
 echo "Webarena homepage is running on port 4399"
 
-# sleep 60
+sleep 60
 
 # Fetch the instance's public hostname
 HOSTNAME=$(curl http://169.254.169.254/latest/meta-data/public-hostname)
