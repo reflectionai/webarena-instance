@@ -1,4 +1,5 @@
 #!/bin/bash
+set -x
 
 # Start Docker containers
 docker start gitlab
@@ -42,3 +43,6 @@ docker exec shopping_admin /var/www/magento2/bin/magento cache:flush
 # GitLab configuration update with dynamic hostname
 docker exec gitlab sed -i "s|^external_url.*|external_url 'http://${HOSTNAME}:8023'|" /etc/gitlab/gitlab.rb
 docker exec gitlab gitlab-ctl reconfigure
+
+touch /home/ubuntu/setup_complete.txt
+echo "Setup complete."
