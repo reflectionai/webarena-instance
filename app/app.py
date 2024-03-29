@@ -1,5 +1,6 @@
 from enum import Enum, auto
 import subprocess
+import time
 from flask import Flask
 import os
 
@@ -19,6 +20,24 @@ def set_state(state: State):
 
 def get_state():
     return os.environ.get('INSTANCE_STATE', 'unknown')
+
+
+def update_state():
+    if get_state() == 'RESETTING' and is_container_healthy('gitlab'):
+        set_state(State.READY)
+
+
+def is_container_healthy(container_name: str):
+    """Function to check the container's health status and update the app's state."""
+    result = subprocess.run([
+        'docker', 'inspect', '--format={{json .State.Health.Status}}',
+        container_name
+    ],
+                            check=True,
+                            stdout=subprocess.PIPE)
+    health_status = result.stdout.decode('utf-8').strip().strip('"')
+
+    return health_status == "healthy"
 
 
 @app.route('/reset', methods=['POST'])
@@ -53,12 +72,17 @@ def reset():
 @app.route('/use', methods=['POST'])
 def use():
     # Mark as running when in use
-    set_state(State.RUNNING)
-    return "Instance in use", 200
+    update_state()
+    if get_state() == 'READY':
+        set_state(State.RUNNING)
+        return "Instance in use", 200
+    else:
+        return "Instance not ready", 400
 
 
 @app.route('/get_state', methods=['GET'])
 def get_state_endpoint():
+    update_state()
     return get_state(), 200
 
 
