@@ -1,6 +1,8 @@
 #!/bin/bash
 set -x
 
+start_time=$(date +%s)
+
 # Start Docker containers
 docker start gitlab
 docker start shopping
@@ -42,6 +44,8 @@ docker exec shopping_admin /var/www/magento2/bin/magento cache:flush
 
 CONTAINER_NAME="gitlab"
 
+wait_start_time=$(date +%s)
+
 # Loop until the container's health status is "healthy"
 while true; do
     # Get the current health status of the container
@@ -53,8 +57,10 @@ while true; do
         break
     fi
 
-    # Wait for a short period before checking again
-    echo "Waiting for $CONTAINER_NAME to become healthy..."
+    # Calculate and echo the wait duration each loop iteration
+    wait_time=$(date +%s)
+    wait_duration=$((wait_time-wait_start_time))
+    echo "Waited $wait_duration seconds for $CONTAINER_NAME to become healthy."
     sleep 10
 done
 
@@ -62,5 +68,7 @@ done
 docker exec gitlab sed -i "s|^external_url.*|external_url 'http://${HOSTNAME}:8023'|" /etc/gitlab/gitlab.rb
 docker exec gitlab gitlab-ctl reconfigure
 
+end_time=$(date +%s)
+total_time=$((end_time-wait_start_time))
 touch /home/ubuntu/setup_complete.txt
-echo "Setup complete."
+echo "Setup complete. Total duration: $total_time seconds."
