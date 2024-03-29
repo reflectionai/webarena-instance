@@ -13,3 +13,5 @@ echo "Instance is running."
 # Retrieve the Public IPv4 address
 export PUBLIC_IP=$(aws ec2 describe-instances --instance-ids $INSTANCE_ID --query 'Reservations[*].Instances[*].PublicIpAddress' --output text --region us-east-2)
 echo "Instance Public IP: $PUBLIC_IP"
+echo "ssh -i webarena.pem ubuntu@$PUBLIC_IP"
+echo "http://$PUBLIC_IP:4399"
