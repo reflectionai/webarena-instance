@@ -17,6 +17,7 @@ HOSTNAME=$(curl http://169.254.169.254/latest/meta-data/public-hostname)
 # Dockerize and run the Flask application
 cd /home/ubuntu/webarena/environment_docker/webarena-homepage
 perl -pi -e "s|<your-server-hostname>|http://${HOSTNAME}|g" /home/ubuntu/webarena/environment_docker/webarena-homepage/templates/index.html
+perl -pi -e "s|http://metis.lti.cs.cmu.edu:8888/wikipedia_en_all_maxi_2022-05/A/User:The_other_Kiwix_guy/Landing|http://${HOSTNAME}:8888/wikipedia_en_all_maxi_2022-05/A/User:The_other_Kiwix_guy/Landing|g" templates/index.html
 
 curl -o Dockerfile https://raw.githubusercontent.com/reflectionai/webarena-instance/main/Dockerfile
 docker build -t webarena-homepage .
