@@ -71,4 +71,15 @@ docker exec gitlab gitlab-ctl reconfigure
 end_time=$(date +%s)
 total_time=$((end_time-wait_start_time))
 touch /home/ubuntu/setup_complete.txt
-echo "Setup complete. Total duration: $total_time seconds."
+echo "Stage 1 complete. Total duration: $total_time seconds."
+echo "Now committing snapshots..."
+
+docker commit gitlab snapshot-gitlab:initial
+docker commit shopping snapshot-shopping:initial
+docker commit shopping_admin snapshot-shopping_admin:initial
+docker commit forum snapshot-forum:initial
+# ommitting kiwix33 because stateless
+
+end_time=$(date +%s)
+total_time=$((end_time-wait_start_time))
+echo "Stage 2 complete. Total duration: $total_time seconds."
