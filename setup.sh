@@ -26,6 +26,13 @@ docker build -t webarena-homepage .
 docker run -d -p 4399:4399 webarena-homepage
 echo "Webarena homepage is running on port 4399"
 
+mkdir /home/ubuntu/app
+cd /home/ubuntu/app
+curl -o Dockerfile https://raw.githubusercontent.com/reflectionai/webarena-instance/main/app/Dockerfile
+curl -o app https://raw.githubusercontent.com/reflectionai/webarena-instance/main/app/app.py
+docker build -t reset-server .
+docker run -d -p 5000:5000 reset-server
+
 sleep 60
 
 # Magento setup with dynamic hostname
