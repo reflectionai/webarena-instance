@@ -4,7 +4,7 @@ from dataclasses import dataclass
 from enum import Enum, auto
 from asyncio.locks import Lock
 
-from fastapi import FastAPI, BackgroundTasks
+from fastapi import FastAPI, BackgroundTasks, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 
 app = FastAPI()
@@ -35,9 +35,6 @@ class State:
     status: Status
     lock: Lock
 
-    async def reset_started(self):
-        return self.status == Status.RESETTING
-
     async def is_ready(self):
         return self.status == Status.RESETTING and await is_container_healthy(
             'gitlab')
@@ -62,9 +59,6 @@ class State:
 
     def set_down(self):
         self.status = Status.DOWN
-
-    def raise_state_error(self):
-        raise StateException(f"Invalid state: {self.status}")
 
     async def get_status_name(self):
         if await state.is_ready():
@@ -130,10 +124,11 @@ async def release_instance(debug: bool):
 async def _release(background_tasks: BackgroundTasks, debug: bool):
     async with state.lock:
         if not state.is_in_use():
-            return {
-                "error":
+            raise HTTPException(
+                status_code=400,
+                detail=
                 f"Instance cannot be released. State: {await state.get_status_name()}"
-            }, 400
+            )
 
         state.set_reset_pending()
     background_tasks.add_task(release_instance, debug)
@@ -161,9 +156,9 @@ async def acquire():
             return {"message": "Acquired instance"}, 200
 
         else:
-            return {
-                "error": f"Instance state: {await state.get_status_name()}"
-            }, 400
+            raise HTTPException(
+                status_code=400,
+                detail=f"Instance state: {await state.get_status_name()}")
 
 
 @app.get('/status')
