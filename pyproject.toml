@@ -4,11 +4,11 @@ version = "0.1.0"
 description = ""
 authors = ["ethanabrooks <ethanabrooks@gmail.com>"]
 readme = "README.md"
-packages = [{include = "webarena_instance"}]
 
 [tool.poetry.dependencies]
 python = "^3.10"
 flask = "^3.0.2"
+flask-cors = "^4.0.0"
 
 
 [build-system]

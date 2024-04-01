@@ -1,11 +1,20 @@
 from enum import Enum, auto
 import subprocess
 from flask import Flask
+from flask_cors import CORS
 from threading import Lock
 
 app = Flask(__name__)
 state_file_path = "/tmp/app_state.json"  # Path to the state file
 state_lock = Lock()  # Lock to ensure atomic updates to the state file
+
+cors = CORS(app,
+            resources={
+                r"/*": {
+                    "origins":
+                    ["http://localhost:5173", "http://127.0.0.1:5173"]
+                }
+            })
 
 
 class State(Enum):

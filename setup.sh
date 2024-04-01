@@ -23,7 +23,7 @@ perl -pi -e "s|http://metis.lti.cs.cmu.edu:8888/wikipedia_en_all_maxi_2022-05/A/
 
 curl -o Dockerfile https://raw.githubusercontent.com/reflectionai/webarena-instance/main/Dockerfile
 docker build -t webarena-homepage .
-docker run -d -p 4399:4399 webarena-homepage
+docker run -d -p 4399:4399 --name webarena-homepage webarena-homepage
 echo "Webarena homepage is running on port 4399"
 
 mkdir /home/ubuntu/app
@@ -31,7 +31,7 @@ cd /home/ubuntu/app
 curl -o Dockerfile https://raw.githubusercontent.com/reflectionai/webarena-instance/main/app/Dockerfile
 curl -o app.py https://raw.githubusercontent.com/reflectionai/webarena-instance/main/app/app.py
 docker build -t reset-server .
-docker run -d -p 5000:5000 -v /var/run/docker.sock:/var/run/docker.sock reset-server
+docker run -d -p 5000:5000 -v /var/run/docker.sock:/var/run/docker.sock --name reset-server reset-server
 
 sleep 60
 
