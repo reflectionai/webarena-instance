@@ -49,6 +49,23 @@ docker exec shopping_admin /var/www/magento2/bin/magento setup:store-config:set 
 docker exec shopping_admin mysql -u magentouser -pMyPassword magentodb -e "UPDATE core_config_data SET value='http://${HOSTNAME}:7780/' WHERE path = 'web/secure/base_url';"
 docker exec shopping_admin /var/www/magento2/bin/magento cache:flush
 
+end_time=$(date +%s)
+total_time=$((end_time-start_time))
+touch /home/ubuntu/setup_complete.txt
+echo "All setup actions complete, except for gitlab. Total duration: $total_time seconds."
+echo "Now committing snapshots..."
+commit_start_time=$(date +%s)
+
+docker commit shopping snapshot-shopping:initial
+docker commit shopping_admin snapshot-shopping_admin:initial
+docker commit forum snapshot-forum:initial
+# ommitting kiwix33 because stateless
+
+end_time=$(date +%s)
+total_time=$((end_time-commit_start_time))
+echo "All containers committed, except for gitlab. Total duration: $total_time seconds."
+echo "Now waiting for gitlab to finish initializing..."
+
 CONTAINER_NAME="gitlab"
 
 wait_start_time=$(date +%s)
@@ -74,19 +91,10 @@ done
 # GitLab configuration update with dynamic hostname
 docker exec gitlab sed -i "s|^external_url.*|external_url 'http://${HOSTNAME}:8023'|" /etc/gitlab/gitlab.rb
 docker exec gitlab gitlab-ctl reconfigure
-
-end_time=$(date +%s)
-total_time=$((end_time-wait_start_time))
-touch /home/ubuntu/setup_complete.txt
-echo "Stage 1 complete. Total duration: $total_time seconds."
-echo "Now committing snapshots..."
-
 docker commit gitlab snapshot-gitlab:initial
-docker commit shopping snapshot-shopping:initial
-docker commit shopping_admin snapshot-shopping_admin:initial
-docker commit forum snapshot-forum:initial
-# ommitting kiwix33 because stateless
 
 end_time=$(date +%s)
 total_time=$((end_time-wait_start_time))
-echo "Stage 2 complete. Total duration: $total_time seconds."
+echo "Gitlab initialized. Total duration: $total_time seconds."
+total_time=$((end_time-start_time))
+echo "Setup complete. Total duration: $total_time seconds."
