@@ -152,5 +152,5 @@ async def acquire():
 async def status():
     async with state.lock:
         if await state.is_ready():
-            return {"status": Status.READY}
+            return {"status": Status.READY.name}
         return {"status": state.status.name}

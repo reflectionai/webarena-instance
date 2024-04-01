@@ -30,8 +30,8 @@ mkdir /home/ubuntu/app
 cd /home/ubuntu/app
 curl -o Dockerfile https://raw.githubusercontent.com/reflectionai/webarena-instance/main/app/Dockerfile
 curl -o app.py https://raw.githubusercontent.com/reflectionai/webarena-instance/main/app/app.py
-docker build -t reset-server .
-docker run -d -p 5000:5000 -v /var/run/docker.sock:/var/run/docker.sock --name reset-server reset-server
+docker build -t reset-instance .
+docker run -d -p 5000:5000 -v /var/run/docker.sock:/var/run/docker.sock --name reset-instance reset-instance
 
 sleep 60
 
