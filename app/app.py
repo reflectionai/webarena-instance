@@ -1,29 +1,38 @@
 from enum import Enum, auto
 import subprocess
-import time
 from flask import Flask
-import os
+from threading import Lock
 
 app = Flask(__name__)
+state_file_path = "/tmp/app_state.json"  # Path to the state file
+state_lock = Lock()  # Lock to ensure atomic updates to the state file
 
 
 class State(Enum):
-    UNKNOWN = auto()
     RESETTING = auto()
     READY = auto()
     RUNNING = auto()
 
 
 def set_state(state: State):
-    os.environ['INSTANCE_STATE'] = state.name
+    with state_lock:
+        with open(state_file_path, "w") as f:
+            f.write(state.name)
 
 
-def get_state():
-    return os.environ.get('INSTANCE_STATE', 'unknown')
+def get_state() -> State:
+    with state_lock:
+        try:
+            with open(state_file_path, "r") as f:
+                state_data = f.read()
+                return State(state_data)
+        except FileNotFoundError:
+            # If the state file doesn't exist, assume RESETTING state
+            return State.RESETTING
 
 
 def update_state():
-    if get_state() == 'RESETTING' and is_container_healthy('gitlab'):
+    if get_state() == State.RESETTING and is_container_healthy('gitlab'):
         set_state(State.READY)
 
 
@@ -73,7 +82,7 @@ def reset():
 def use():
     # Mark as running when in use
     update_state()
-    if get_state() == 'READY':
+    if get_state() == State.READY:
         set_state(State.RUNNING)
         return "Instance in use", 200
     else:
@@ -83,8 +92,9 @@ def use():
 @app.route('/get_state', methods=['GET'])
 def get_state_endpoint():
     update_state()
-    return get_state(), 200
+    return get_state().name, 200
 
 
 if __name__ == '__main__':
+    set_state(State.RESETTING)
     app.run(host='0.0.0.0', port=5000)
