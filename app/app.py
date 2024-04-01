@@ -66,6 +66,11 @@ class State:
     def raise_state_error(self):
         raise StateException(f"Invalid state: {self.status}")
 
+    async def get_status_name(self):
+        if await state.is_ready():
+            return Status.READY.name
+        return state.status.name
+
 
 state = State(Status.RESETTING, Lock())
 
@@ -122,18 +127,29 @@ async def release_instance(debug: bool):
         state.set_resetting()
 
 
-@app.post('/release')
-async def release(background_tasks: BackgroundTasks, debug: bool = False):
+async def _release(background_tasks: BackgroundTasks, debug: bool):
     async with state.lock:
         if not state.is_in_use():
             return {
                 "error":
-                f"Instance cannot be released. State: {state.status.name}"
+                f"Instance cannot be released. State: {await state.get_status_name()}"
             }, 400
 
         state.set_reset_pending()
     background_tasks.add_task(release_instance, debug)
-    return {"message": "Release initiated"}, 202
+    return {
+        "message": "Release initiated" + (" (debug)" if debug else "")
+    }, 202
+
+
+@app.post('/release')
+async def release(background_tasks: BackgroundTasks):
+    return await _release(background_tasks, debug=False)
+
+
+@app.post('/release-debug')
+async def release_debug(background_tasks: BackgroundTasks):
+    return await _release(background_tasks, debug=True)
 
 
 @app.put('/acquire')
@@ -145,12 +161,12 @@ async def acquire():
             return {"message": "Acquired instance"}, 200
 
         else:
-            return {"error": f"Instance state: {state.status.name}"}, 400
+            return {
+                "error": f"Instance state: {await state.get_status_name()}"
+            }, 400
 
 
 @app.get('/status')
 async def status():
     async with state.lock:
-        if await state.is_ready():
-            return {"status": Status.READY.name}
-        return {"status": state.status.name}
+        return {"status": await state.get_status_name()}
