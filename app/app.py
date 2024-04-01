@@ -1,8 +1,10 @@
+import asyncio
+import logging
+from dataclasses import dataclass
 from enum import Enum, auto
-import subprocess
-from threading import Lock
+from asyncio.locks import Lock
 
-from fastapi import FastAPI
+from fastapi import FastAPI, BackgroundTasks
 from fastapi.middleware.cors import CORSMiddleware
 
 app = FastAPI()
@@ -15,55 +17,85 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-state_file_path = "/tmp/app_state.json"  # Path to the state file
-state_lock = Lock()  # Lock to ensure atomic updates to the state file
 
-
-class State(Enum):
+class Status(Enum):
+    RESET_PENDING = auto()
     RESETTING = auto()
     READY = auto()
-    RUNNING = auto()
+    IN_USE = auto()
+    DOWN = auto()
 
 
-def set_state(state: State):
-    with state_lock:
-        with open(state_file_path, "w") as f:
-            f.write(state.name)
+class StateException(Exception):
+    pass
 
 
-def get_state() -> State:
-    with state_lock:
-        try:
-            with open(state_file_path, "r") as f:
-                state_data = f.read()
-                return State(state_data)
-        except FileNotFoundError:
-            # If the state file doesn't exist, assume RESETTING state
-            return State.RESETTING
+@dataclass
+class State:
+    status: Status
+    lock: Lock
+
+    async def reset_started(self):
+        return self.status == Status.RESETTING
+
+    async def is_ready(self):
+        return self.status == Status.RESETTING and await is_container_healthy(
+            'gitlab')
+
+    def is_in_use(self):
+        return self.status == Status.IN_USE
+
+    def set_reset_pending(self):
+        if self.status != Status.IN_USE:
+            raise StateException(f"Invalid state: {self.status}")
+        self.status = Status.RESET_PENDING
+
+    def set_resetting(self):
+        if self.status != Status.RESET_PENDING:
+            raise StateException(f"Invalid state: {self.status}")
+        self.status = Status.RESETTING
+
+    def set_in_use(self):
+        if self.status != Status.RESETTING:
+            raise StateException(f"Invalid state: {self.status}")
+        self.status = Status.IN_USE
+
+    def set_down(self):
+        self.status = Status.DOWN
+
+    def raise_state_error(self):
+        raise StateException(f"Invalid state: {self.status}")
 
 
-def update_state():
-    if get_state() == State.RESETTING and is_container_healthy('gitlab'):
-        set_state(State.READY)
+state = State(Status.RESETTING, Lock())
 
 
-def is_container_healthy(container_name: str):
+async def is_container_healthy(container_name: str):
     """Function to check the container's health status and update the app's state."""
-    result = subprocess.run([
-        'docker', 'inspect', '--format={{json .State.Health.Status}}',
-        container_name
-    ],
-                            check=True,
-                            stdout=subprocess.PIPE)
-    health_status = result.stdout.decode('utf-8').strip().strip('"')
-
+    health_status = await run('docker', 'inspect',
+                              '--format={{json .State.Health.Status}}',
+                              container_name)
+    print("Health status:", health_status)
     return health_status == "healthy"
 
 
-@app.post('/reset')
-def reset():
-    # Your reset logic here
-    set_state(State.RESETTING)
+class AsyncioException(Exception):
+    pass
+
+
+async def run(*args: str) -> str:
+    proc = await asyncio.create_subprocess_exec(*args,
+                                                stdout=asyncio.subprocess.PIPE,
+                                                stderr=asyncio.subprocess.PIPE)
+    stdout, stderr = await proc.communicate()
+    if proc.returncode != 0:
+        raise AsyncioException(
+            f"Command failed with exit code {proc.returncode}: {stderr.decode().strip()}"
+        )
+    return stdout.decode('utf-8').strip().strip('"')
+
+
+async def release_instance(debug: bool):
     containers = {
         'gitlab': ['8023:8023', 'snapshot-gitlab:initial'],
         'shopping': ['7770:80', 'snapshot-shopping:initial'],
@@ -74,33 +106,57 @@ def reset():
     for container, [port, image] in containers.items():
         try:
             # Stop and remove the container
-            subprocess.run(["docker", "stop", container], check=True)
-            subprocess.run(["docker", "rm", container], check=True)
-            # Run the container from the snapshot image
-            subprocess.run([
-                "docker", "run", "-d", "--name", container, "-p", port, image
-            ],
-                           check=True)
-        except subprocess.CalledProcessError as e:
+            if debug:
+                print(f"Debug mode: Skipping {container}")
+                await asyncio.sleep(5)
+            else:
+                print(f"Releasing {container}")
+                await run("docker", "stop", container)
+                print(f"Stopped {container}")
+                await run("docker", "rm", container)
+                print(f"Removed {container}")
+                await run("docker", "run", "-d", "--name", container, "-p",
+                          port, image)
+        except AsyncioException as e:
+            logging.error(f"Error releasing {container}: {e}")
             # Handle errors in the subprocess execution
-            return f"An error occurred: {e}", 500
-
-    # Reset logic continues
-    return "Reset complete", 200
-
-
-@app.post('/use')
-def use():
-    # Mark as running when in use
-    update_state()
-    if get_state() == State.READY:
-        set_state(State.RUNNING)
-        return "Instance in use", 200
-    else:
-        return "Instance not ready", 400
+            async with state.lock:
+                state.set_down()
+                return
+    async with state.lock:
+        print("Release complete. Setting ready")
+        state.set_resetting()
 
 
-@app.get('/get_state')
-def get_state_endpoint():
-    update_state()
-    return get_state().name, 200
+@app.post('/release')
+async def release(background_tasks: BackgroundTasks, debug: bool = False):
+    async with state.lock:
+        if not state.is_in_use():
+            return {
+                "error":
+                f"Instance cannot be released. State: {state.status.name}"
+            }, 400
+
+        state.set_reset_pending()
+    background_tasks.add_task(release_instance, debug)
+    return {"message": "Release initiated"}, 202
+
+
+@app.post('/acquire')
+async def acquire():
+    async with state.lock:
+        # Mark as running when in use
+        if await state.is_ready():
+            state.set_in_use()
+            return {"message": "Acquired instance"}, 200
+
+        else:
+            return {"error": f"Instance state: {state.status.name}"}, 400
+
+
+@app.get('/status')
+async def status():
+    async with state.lock:
+        if await state.is_ready():
+            return {"status": Status.READY}
+        return {"status": state.status.name}
