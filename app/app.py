@@ -75,7 +75,6 @@ async def is_container_healthy(container_name: str):
     health_status = await run('docker', 'inspect',
                               '--format={{json .State.Health.Status}}',
                               container_name)
-    print("Health status:", health_status)
     return health_status == "healthy"
 
 
@@ -107,14 +106,10 @@ async def release_instance(debug: bool):
         try:
             # Stop and remove the container
             if debug:
-                print(f"Debug mode: Skipping {container}")
                 await asyncio.sleep(5)
             else:
-                print(f"Releasing {container}")
                 await run("docker", "stop", container)
-                print(f"Stopped {container}")
                 await run("docker", "rm", container)
-                print(f"Removed {container}")
                 await run("docker", "run", "-d", "--name", container, "-p",
                           port, image)
         except AsyncioException as e:
@@ -124,7 +119,6 @@ async def release_instance(debug: bool):
                 state.set_down()
                 return
     async with state.lock:
-        print("Release complete. Setting ready")
         state.set_resetting()
 
 
