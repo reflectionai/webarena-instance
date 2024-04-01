@@ -111,7 +111,7 @@ async def release_instance(debug: bool):
         try:
             # Stop and remove the container
             if debug:
-                await asyncio.sleep(5)
+                await asyncio.sleep(.01)
             else:
                 await run("docker", "stop", container)
                 await run("docker", "rm", container)
