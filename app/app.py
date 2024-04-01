@@ -1,20 +1,22 @@
 from enum import Enum, auto
 import subprocess
-from flask import Flask
-from flask_cors import CORS
 from threading import Lock
 
-app = Flask(__name__)
+from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
+
+app = FastAPI()
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["http://localhost:5173", "http://127.0.0.1:5173"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
 state_file_path = "/tmp/app_state.json"  # Path to the state file
 state_lock = Lock()  # Lock to ensure atomic updates to the state file
-
-cors = CORS(app,
-            resources={
-                r"/*": {
-                    "origins":
-                    ["http://localhost:5173", "http://127.0.0.1:5173"]
-                }
-            })
 
 
 class State(Enum):
@@ -58,7 +60,7 @@ def is_container_healthy(container_name: str):
     return health_status == "healthy"
 
 
-@app.route('/reset', methods=['POST'])
+@app.post('/reset')
 def reset():
     # Your reset logic here
     set_state(State.RESETTING)
@@ -87,7 +89,7 @@ def reset():
     return "Reset complete", 200
 
 
-@app.route('/use', methods=['POST'])
+@app.post('/use')
 def use():
     # Mark as running when in use
     update_state()
@@ -98,12 +100,7 @@ def use():
         return "Instance not ready", 400
 
 
-@app.route('/get_state', methods=['GET'])
+@app.get('/get_state')
 def get_state_endpoint():
     update_state()
     return get_state().name, 200
-
-
-if __name__ == '__main__':
-    set_state(State.RESETTING)
-    app.run(host='0.0.0.0', port=5000)

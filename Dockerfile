@@ -7,7 +7,7 @@ WORKDIR /app
 # Copy the current directory contents into the container at /app
 COPY . /app
 
-RUN pip install --no-cache-dir flask flask-cors
+RUN pip install --no-cache-dir flask
 
 # Make port 4399 available to the world outside this container
 EXPOSE 4399
