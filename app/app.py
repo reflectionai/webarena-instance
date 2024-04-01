@@ -136,7 +136,7 @@ async def release(background_tasks: BackgroundTasks, debug: bool = False):
     return {"message": "Release initiated"}, 202
 
 
-@app.post('/acquire')
+@app.put('/acquire')
 async def acquire():
     async with state.lock:
         # Mark as running when in use
