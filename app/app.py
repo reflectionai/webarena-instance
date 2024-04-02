@@ -8,6 +8,7 @@ from asyncio.locks import Lock
 from fastapi import FastAPI, BackgroundTasks, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 
+HEARTBEAT_TIMEOUT = timedelta(minutes=5)
 app = FastAPI()
 
 app.add_middleware(
@@ -54,11 +55,14 @@ class State:
     # Check if the current time exceeds the last heartbeat by the threshold
     time_since_heartbeat = datetime.now() - self.last_heartbeat
     print(f"Time since heartbeat: {time_since_heartbeat}")
-    if time_since_heartbeat > timedelta(minutes=5):
+    if time_since_heartbeat > HEARTBEAT_TIMEOUT:
+      perform_reset = False
       async with self.lock:
         if self.is_in_use():
           self.set_reset_pending()
-      await state.release_instance(debug)
+          perform_reset = True
+      if perform_reset:
+        await state.release_instance(debug)
 
   async def get_status(self) -> Status:
     if await self.is_ready():
@@ -153,6 +157,7 @@ async def run(*args: str) -> str:
 
 
 async def _release(background_tasks: BackgroundTasks, debug: bool):
+  perform_release = False
   async with state.lock:
     if not state.is_in_use():
       raise HTTPException(
@@ -162,7 +167,9 @@ async def _release(background_tasks: BackgroundTasks, debug: bool):
       )
 
     state.set_reset_pending()
-  background_tasks.add_task(state.release_instance, debug)
+    perform_release = True
+  if perform_release:
+    background_tasks.add_task(state.release_instance, debug)
   return {"message": "Reset initiated" + (" (debug)" if debug else "")}, 202
 
 
