@@ -2,3 +2,4 @@
 webarena.pem
 __pycache__
 app/__pycache__
+.env
