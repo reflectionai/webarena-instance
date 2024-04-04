@@ -4,15 +4,17 @@ import logging
 from dataclasses import dataclass
 from enum import Enum, auto
 from asyncio.locks import Lock
+import random
 
-from fastapi import FastAPI, BackgroundTasks, HTTPException
-from fastapi.middleware.cors import CORSMiddleware
+import fastapi
+from fastapi.middleware import cors
 
+DEBUG = True
 HEARTBEAT_TIMEOUT = timedelta(minutes=5)
-app = FastAPI()
+app = fastapi.FastAPI()
 
 app.add_middleware(
-    CORSMiddleware,
+    cors.CORSMiddleware,
     allow_origins=["http://localhost:5173", "http://127.0.0.1:5173"],
     allow_credentials=True,
     allow_methods=["*"],
@@ -47,14 +49,13 @@ class State:
         return {"message": "Acquired instance"}, 200
 
       else:
-        raise HTTPException(
+        raise fastapi.HTTPException(
             status_code=400,
             detail=f"Instance state: {await self.get_status_name()}")
 
   async def check_heartbeat(self, debug: bool):
     # Check if the current time exceeds the last heartbeat by the threshold
     time_since_heartbeat = datetime.now() - self.last_heartbeat
-    print(f"Time since heartbeat: {time_since_heartbeat}")
     if time_since_heartbeat > HEARTBEAT_TIMEOUT:
       perform_reset = False
       async with self.lock:
@@ -88,9 +89,7 @@ class State:
     for container, [port, image] in containers.items():
       try:
         # Stop and remove the container
-        if debug:
-          await asyncio.sleep(.01)
-        else:
+        if not debug:
           await run("docker", "stop", container)
           await run("docker", "rm", container)
           await run("docker", "run", "-d", "--name", container, "-p", port,
@@ -134,10 +133,13 @@ state = State(Status.RESETTING, Lock())
 
 async def is_container_healthy(container_name: str):
   """Function to check the container's health status and update the app's state."""
-  health_status = await run('docker', 'inspect',
-                            '--format={{json .State.Health.Status}}',
-                            container_name)
-  return health_status == "healthy"
+  if DEBUG:
+    return random.choice([True, False])
+  else:
+    health_status = await run('docker', 'inspect',
+                              '--format={{json .State.Health.Status}}',
+                              container_name)
+    return health_status == "healthy"
 
 
 class AsyncioException(Exception):
@@ -156,11 +158,11 @@ async def run(*args: str) -> str:
   return stdout.decode('utf-8').strip().strip('"')
 
 
-async def _release(background_tasks: BackgroundTasks, debug: bool):
+async def _release(background_tasks: fastapi.BackgroundTasks, debug: bool):
   perform_release = False
   async with state.lock:
     if not state.is_in_use():
-      raise HTTPException(
+      raise fastapi.HTTPException(
           status_code=400,
           detail=
           f"Instance cannot be released. State: {await state.get_status_name()}"
@@ -190,12 +192,12 @@ async def heartbeat():
 
 
 @app.post('/release')
-async def release(background_tasks: BackgroundTasks):
+async def release(background_tasks: fastapi.BackgroundTasks):
   return await _release(background_tasks, debug=False)
 
 
 @app.post('/release-debug')
-async def release_debug(background_tasks: BackgroundTasks):
+async def release_debug(background_tasks: fastapi.BackgroundTasks):
   return await _release(background_tasks, debug=True)
 
 
