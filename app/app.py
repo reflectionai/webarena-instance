@@ -40,8 +40,8 @@ class State:
   lock: Lock
   last_heartbeat: datetime = datetime.now()  # Initialize with the current time
 
-  async def acquire(self, debug: bool):
-    await self.check_heartbeat(debug)
+  async def acquire(self, debug: bool, container_name: None | str):
+    await self.check_heartbeat(debug, container_name)
     async with self.lock:
       # Mark as running when in use
       if await self.is_ready():
@@ -53,7 +53,7 @@ class State:
             status_code=400,
             detail=f"Instance state: {await self.get_status_name()}")
 
-  async def check_heartbeat(self, debug: bool):
+  async def check_heartbeat(self, debug: bool, container_name: None | str):
     # Check if the current time exceeds the last heartbeat by the threshold
     time_since_heartbeat = datetime.now() - self.last_heartbeat
     print(f"Time since heartbeat: {time_since_heartbeat}")
@@ -64,7 +64,7 @@ class State:
           self.set_reset_pending()
           perform_reset = True
       if perform_reset:
-        await state.release_instance(debug)
+        await state.release_instance(debug, container_name)
 
   async def get_status(self) -> Status:
     if await self.is_ready():
@@ -79,13 +79,15 @@ class State:
     return self.status == Status.RESETTING and await is_container_healthy(
         'gitlab')
 
-  async def release_instance(self, debug: bool):
+  async def release_instance(self, debug: bool, container_name: None | str):
     containers = {
         'gitlab': ['8023:8023', 'snapshot-gitlab:initial'],
         'shopping': ['7770:80', 'snapshot-shopping:initial'],
         'shopping_admin': ['7780:80', 'snapshot-shopping_admin:initial'],
         'forum': ['9999:80', 'snapshot-forum:initial'],
     }
+    if container_name is not None:
+      containers = {container_name: containers[container_name]}
 
     for container, [port, image] in containers.items():
       try:
@@ -159,7 +161,8 @@ async def run(*args: str) -> str:
   return stdout.decode('utf-8').strip().strip('"')
 
 
-async def _release(background_tasks: fastapi.BackgroundTasks, debug: bool):
+async def _release(background_tasks: fastapi.BackgroundTasks, debug: bool,
+                   container_name: None | str):
   perform_release = False
   async with state.lock:
     if not state.is_in_use():
@@ -172,18 +175,18 @@ async def _release(background_tasks: fastapi.BackgroundTasks, debug: bool):
     state.set_reset_pending()
     perform_release = True
   if perform_release:
-    background_tasks.add_task(state.release_instance, debug)
+    background_tasks.add_task(state.release_instance, debug, container_name)
   return {"message": "Reset initiated" + (" (debug)" if debug else "")}, 202
 
 
 @app.post('/acquire-debug')
 async def acquire_debug():
-  return await state.acquire(debug=True)
+  return await state.acquire(debug=True, container_name=None)
 
 
 @app.post('/acquire')
-async def acquire():
-  return await state.acquire(debug=False)
+async def acquire(container_name: None | str = None):
+  return await state.acquire(debug=False, container_name=container_name)
 
 
 @app.post('/heartbeat')
@@ -193,13 +196,16 @@ async def heartbeat():
 
 
 @app.post('/release')
-async def release(background_tasks: fastapi.BackgroundTasks):
-  return await _release(background_tasks, debug=False)
+async def release(background_tasks: fastapi.BackgroundTasks,
+                  container_name: None | str = None):
+  return await _release(background_tasks,
+                        debug=False,
+                        container_name=container_name)
 
 
 @app.post('/release-debug')
 async def release_debug(background_tasks: fastapi.BackgroundTasks):
-  return await _release(background_tasks, debug=True)
+  return await _release(background_tasks, debug=True, container_name=None)
 
 
 @app.get('/status')
