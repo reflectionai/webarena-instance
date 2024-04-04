@@ -176,7 +176,7 @@ async def _release(background_tasks: fastapi.BackgroundTasks, debug: bool):
   return {"message": "Reset initiated" + (" (debug)" if debug else "")}, 202
 
 
-@app.put('/acquire-debug')
+@app.post('/acquire-debug')
 async def acquire_debug():
   return await state.acquire(debug=True)
 
