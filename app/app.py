@@ -83,23 +83,17 @@ class State:
         'gitlab')
 
   async def release_instance(self, debug: bool, container_name: None | str):
-    containers = {
-        'gitlab': ['8023:8023', 'snapshot-gitlab:initial'],
-        'shopping': ['7770:80', 'snapshot-shopping:initial'],
-        'shopping_admin': ['7780:80', 'snapshot-shopping_admin:initial'],
-        'forum': ['9999:80', 'snapshot-forum:initial'],
-    }
+    containers = ['gitlab', 'shopping', 'shopping_admin', 'forum']
+    # containers = ['shopping_admin']
     if container_name is not None:
-      containers = {container_name: containers[container_name]}
+      containers = [container_name]
 
-    for container, [port, image] in containers.items():
+    for container in containers:
       try:
         # Stop and remove the container
         if not debug:
           await run("docker", "stop", container)
-          await run("docker", "rm", container)
-          await run("docker", "run", "-d", "--name", container, "-p", port,
-                    image)
+          await run("docker", "start", container)
       except AsyncioException as e:
         logging.error(f"Error releasing {container}: {e}")
         # Handle errors in the subprocess execution
