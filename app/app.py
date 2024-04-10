@@ -88,15 +88,14 @@ class State:
     return status.name
 
   async def is_ready(self):
-    return self.status == Status.RESETTING and await is_container_healthy(
-        'gitlab')
+    return self.status == Status.RESETTING  # and await is_container_healthy( 'gitlab')
 
   async def release_instance(self, debug: bool, container_name: None | str):
     containers = {
-        'gitlab': ['8023:8023', 'snapshot-gitlab:initial'],
-        'shopping': ['7770:80', 'snapshot-shopping:initial'],
+        # 'gitlab': ['8023:8023', 'snapshot-gitlab:initial'],
+        # 'shopping': ['7770:80', 'snapshot-shopping:initial'],
         'shopping_admin': ['7780:80', 'snapshot-shopping_admin:initial'],
-        'forum': ['9999:80', 'snapshot-forum:initial'],
+        # 'forum': ['9999:80', 'snapshot-forum:initial'],
     }
     if container_name is not None:
       containers = {container_name: containers[container_name]}
