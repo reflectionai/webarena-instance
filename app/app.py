@@ -5,6 +5,7 @@ from dataclasses import dataclass
 from enum import Enum, auto
 from asyncio.locks import Lock
 import random
+from contextlib import asynccontextmanager
 
 import fastapi
 from fastapi.middleware import cors
@@ -16,6 +17,7 @@ class LifespanManager:
     self.app = app
 
   async def __aenter__(self):
+    print("Starting heartbeat monitor")
     asyncio.create_task(state.heartbeat_monitor(debug=True,
                                                 container_name=None))
 
@@ -23,10 +25,17 @@ class LifespanManager:
     pass
 
 
+@asynccontextmanager
+async def lifespan(app: fastapi.FastAPI):
+  print("Starting heartbeat monitor")
+  asyncio.create_task(state.heartbeat_monitor(debug=True, container_name=None))
+  yield
+
+
 DEBUG = True
 HEARTBEAT_TIMEOUT = timedelta(minutes=5)
 
-app = fastapi.FastAPI(lifespan=LifespanManager)
+app = fastapi.FastAPI(lifespan=lifespan)
 
 app.add_middleware(
     cors.CORSMiddleware,
