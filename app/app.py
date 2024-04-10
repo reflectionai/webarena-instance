@@ -69,6 +69,15 @@ class State:
       if perform_reset:
         await state.release_instance(debug, container_name)
 
+  async def heartbeat_monitor(self, debug: bool, container_name: None | str):
+    """
+      Periodically checks if the last heartbeat received is within the acceptable timeframe.
+      If not, takes necessary actions.
+      """
+    while True:
+      await asyncio.sleep(60)  # Check every minute
+      await self.check_heartbeat(debug=debug, container_name=container_name)
+
   async def get_status(self) -> Status:
     if await self.is_ready():
       return Status.READY
@@ -215,3 +224,6 @@ async def release_debug(background_tasks: fastapi.BackgroundTasks):
 async def status():
   async with state.lock:
     return {"status": await state.get_status_name()}
+
+
+asyncio.create_task(state.heartbeat_monitor(debug=True, container_name=None))
