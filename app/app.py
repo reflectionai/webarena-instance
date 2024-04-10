@@ -9,9 +9,24 @@ import random
 import fastapi
 from fastapi.middleware import cors
 
+
+class LifespanManager:
+
+  def __init__(self, app: fastapi.FastAPI):
+    self.app = app
+
+  async def __aenter__(self):
+    asyncio.create_task(state.heartbeat_monitor(debug=True,
+                                                container_name=None))
+
+  async def __aexit__(self, *_):
+    pass
+
+
 DEBUG = True
 HEARTBEAT_TIMEOUT = timedelta(minutes=5)
-app = fastapi.FastAPI()
+
+app = fastapi.FastAPI(lifespan=LifespanManager)
 
 app.add_middleware(
     cors.CORSMiddleware,
@@ -223,6 +238,3 @@ async def release_debug(background_tasks: fastapi.BackgroundTasks):
 async def status():
   async with state.lock:
     return {"status": await state.get_status_name()}
-
-
-asyncio.create_task(state.heartbeat_monitor(debug=True, container_name=None))
