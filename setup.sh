@@ -31,7 +31,6 @@ cd /home/ubuntu/app
 curl -o Dockerfile https://raw.githubusercontent.com/reflectionai/webarena-instance/main/app/Dockerfile
 curl -o app.py https://raw.githubusercontent.com/reflectionai/webarena-instance/main/app/app.py
 docker build -t reset-instance .
-docker run -d -p 5000:5000 -v /var/run/docker.sock:/var/run/docker.sock --name reset-instance reset-instance
 
 sleep 60
 
@@ -96,5 +95,6 @@ end_time=$(date +%s)
 # end_time=$(date +%s)
 # total_time=$((end_time-wait_start_time))
 # echo "Gitlab initialized. Total duration: $total_time seconds."
+docker run -d -p 5000:5000 -v /var/run/docker.sock:/var/run/docker.sock --name reset-instance reset-instance
 total_time=$((end_time-start_time))
 echo "Setup complete. Total duration: $total_time seconds."
