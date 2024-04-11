@@ -82,6 +82,8 @@ class State:
     time_since_heartbeat = datetime.now() - self.last_heartbeat
     logger.info(f"Time since heartbeat: {time_since_heartbeat}")
     if time_since_heartbeat > HEARTBEAT_TIMEOUT:
+      logger.info(
+          f"Time since heartbeat exceeds threshold: {HEARTBEAT_TIMEOUT}")
       perform_reset = False
       async with self.lock:
         if self.is_in_use():
@@ -112,6 +114,7 @@ class State:
     return self.status == Status.RESETTING  # and await is_container_healthy( 'gitlab')
 
   async def release_instance(self, debug: bool, container_name: None | str):
+    logger.info("Restarting containers")
     containers = {
         # 'gitlab': ['8023:8023', 'snapshot-gitlab:initial'],
         # 'shopping': ['7770:80', 'snapshot-shopping:initial'],
@@ -142,19 +145,23 @@ class State:
     return self.status == Status.IN_USE
 
   def set_down(self):
+    logger.info("Setting state to DOWN")
     self.status = Status.DOWN
 
   def set_in_use(self):
+    logger.info("Setting state to IN_USE")
     if self.status != Status.RESETTING:
       raise StateException(f"Invalid state: {self.status}")
     self.status = Status.IN_USE
 
   def set_reset_pending(self):
+    logger.info("Setting state to RESET_PENDING")
     if self.status != Status.IN_USE:
       raise StateException(f"Invalid state: {self.status}")
     self.status = Status.RESET_PENDING
 
   def set_resetting(self):
+    logger.info("Setting state to RESETTING")
     if self.status != Status.RESET_PENDING:
       raise StateException(f"Invalid state: {self.status}")
     self.status = Status.RESETTING
