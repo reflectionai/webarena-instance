@@ -16,8 +16,6 @@ class LifespanManager:
     self.app = app
 
   async def __aenter__(self):
-    with open("aenter.log", "a") as f:
-      f.write("Entering lifespan context\n")
     asyncio.create_task(state.heartbeat_monitor(debug=True,
                                                 container_name=None))
 
@@ -26,10 +24,8 @@ class LifespanManager:
 
 
 DEBUG = True
-HEARTBEAT_TIMEOUT = timedelta(minutes=5)
+HEARTBEAT_TIMEOUT = timedelta(minutes=1)
 
-with open("aenter.log", "w") as f:
-  f.write("starting...")
 app = fastapi.FastAPI(lifespan=LifespanManager)
 
 app.add_middleware(
@@ -78,8 +74,6 @@ class State:
   async def check_heartbeat(self, debug: bool, container_name: None | str):
     # Check if the current time exceeds the last heartbeat by the threshold
     time_since_heartbeat = datetime.now() - self.last_heartbeat
-    with open("heartbeat.log", "a") as f:
-      f.write(f"Time since heartbeat: {time_since_heartbeat}\n")
     print(f"Time since heartbeat: {time_since_heartbeat}")
     if time_since_heartbeat > HEARTBEAT_TIMEOUT:
       perform_reset = False
@@ -97,8 +91,6 @@ class State:
       """
     while True:
       await asyncio.sleep(60)  # Check every minute
-      with open("heartbeat.log", "a") as f:
-        f.write(f"Checking heartbeat at {datetime.now()}\n")
       await self.check_heartbeat(debug=debug, container_name=container_name)
 
   async def get_status(self) -> Status:
