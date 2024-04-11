@@ -15,6 +15,9 @@ logging.basicConfig(
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
 logger = logging.getLogger("uvicorn")
 
+DEBUG = False
+HEARTBEAT_TIMEOUT = timedelta(minutes=2)
+
 
 class LifespanManager:
 
@@ -22,15 +25,12 @@ class LifespanManager:
     self.app = app
 
   async def __aenter__(self):
-    asyncio.create_task(state.heartbeat_monitor(debug=True,
-                                                container_name=None))
+    asyncio.create_task(
+        state.heartbeat_monitor(debug=DEBUG, container_name=None))
 
   async def __aexit__(self, *_):
     pass
 
-
-DEBUG = True
-HEARTBEAT_TIMEOUT = timedelta(minutes=2)
 
 app = fastapi.FastAPI(lifespan=LifespanManager)
 
@@ -129,8 +129,11 @@ class State:
       try:
         # Stop and remove the container
         if not debug:
+          logging.info(f"docker stop {container}")
           await run("docker", "stop", container)
+          logger.info(f"docker rm {container}")
           await run("docker", "rm", container)
+          logger.info(f"docker run -d --name {container} -p {port} {image}")
           await run("docker", "run", "-d", "--name", container, "-p", port,
                     image)
       except AsyncioException as e:
