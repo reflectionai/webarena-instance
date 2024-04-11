@@ -69,6 +69,7 @@ class State:
     async with self.lock:
       # Mark as running when in use
       if await self.is_ready():
+        self.update_heartbeat()
         self.set_in_use()
         return {"message": "Acquired instance"}, 200
 
