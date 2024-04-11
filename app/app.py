@@ -9,6 +9,12 @@ import random
 import fastapi
 from fastapi.middleware import cors
 
+# Configure logging
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+logger = logging.getLogger("uvicorn")
+
 
 class LifespanManager:
 
@@ -74,7 +80,7 @@ class State:
   async def check_heartbeat(self, debug: bool, container_name: None | str):
     # Check if the current time exceeds the last heartbeat by the threshold
     time_since_heartbeat = datetime.now() - self.last_heartbeat
-    print(f"Time since heartbeat: {time_since_heartbeat}")
+    logger.info(f"Time since heartbeat: {time_since_heartbeat}")
     if time_since_heartbeat > HEARTBEAT_TIMEOUT:
       perform_reset = False
       async with self.lock:
