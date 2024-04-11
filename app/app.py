@@ -24,7 +24,7 @@ class LifespanManager:
 
 
 DEBUG = True
-HEARTBEAT_TIMEOUT = timedelta(minutes=1)
+HEARTBEAT_TIMEOUT = timedelta(minutes=2)
 
 app = fastapi.FastAPI(lifespan=LifespanManager)
 
@@ -90,7 +90,7 @@ class State:
       If not, takes necessary actions.
       """
     while True:
-      await asyncio.sleep(60)  # Check every minute
+      await asyncio.sleep(10)  # Check every minute
       await self.check_heartbeat(debug=debug, container_name=container_name)
 
   async def get_status(self) -> Status:
